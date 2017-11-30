@@ -13,31 +13,21 @@ import Kitura
 
 // MARK: Implementations
 
+
+
 extension RouterRequest {
     typealias Subdomain = [String]
     // Extension to work arround broken .subdomains
     var subdomainComponents: Subdomain {
-        return hostname.split(separator: ".").dropLast().map { String($0) }.filter { !$0.isEmpty }
+        return hostname.split(separator: ".").dropLast(2).map { String($0) }.filter { !$0.isEmpty }
     }
     var subdomainString: String { return subdomainComponents.joined(separator: ".") }
 }
 
-
-let router = Router()
-
-router.get("/") { request, response, _ in
-    print("[SRV] Received request")
-    switch request.subdomainString {
-    case let x where x.isEmpty:
-        try response.status(.OK).send("Hello.").end()
-    default:
-        try response.status(.notFound).end()
-    }
-}
-
 struct CLIParams {
-    var port: UInt = 8080
+    var port: UInt = 80
     var ssl: UInt? = nil
+    var hostname: String = ""
 }
 
 func printHelp() {
@@ -57,7 +47,6 @@ func exitError(_ message: String, printHelp: Bool = false) -> Never {
 }
 
 
-// MARK: Main
 
 var params = CLIParams()
 var iter = CommandLine.arguments.dropFirst().makeIterator()
@@ -81,13 +70,19 @@ while let arg = iter.next() {
 }
 
 
-Application.run(forever: true) { _ in
-    Kitura.addHTTPServer(onPort: Int(params.port), with: router)
-    if let sslPort = params.ssl {
-        // TODO: Add HTTPS server on port 443
-        //  https://developer.ibm.com/swift/2016/09/22/securing-kitura-part-1-enabling-ssltls-on-your-swift-server/
-        // Kitura.addHTTPServer(onPort: Int(sslPort), with: router, withSSL: <#SSLConfig?#>)
-    }
-    print("[APP] Server starting...")
-    Kitura.run()
+let router = Router()
+
+router.get("/") { request, response, _ in
+    try response.status(.OK).send("Hello.").end()
 }
+
+
+
+Kitura.addHTTPServer(onPort: Int(params.port), with: router)
+if let sslPort = params.ssl {
+    // TODO: Add HTTPS server on port 443
+    //  https://developer.ibm.com/swift/2016/09/22/securing-kitura-part-1-enabling-ssltls-on-your-swift-server/
+    // Kitura.addHTTPServer(onPort: Int(sslPort), with: router, withSSL: <#SSLConfig?#>)
+}
+print("[APP] Server starting...")
+Kitura.run()
